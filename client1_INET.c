@@ -7,25 +7,40 @@
 #include <string.h>
 #include <unistd.h>
 
-#define SERVERPORT 12345
+#ifndef SERVERPORT
+#define SERVERPORT 12123
+#endif
+
 #define SERVERADDRESS "127.0.0.1"
 
 int main(int argc, char *argv[]) {
 	int clientSocket;
 	struct sockaddr_in serverAddress;
 	char *msg;
+	const char *serverIP;
+	const char *message;
 	size_t msglen;
 	int returnCode;
 
 	char buffer[20];
 
-	if (argc != 2) {
-		printf("Usage: %s \"message to send\"\n", argv[0]);
+	if (argc == 2) {
+		serverIP = SERVERADDRESS;
+		message = argv[1];
+	} else if (argc == 3) {
+		serverIP = argv[1];
+		message = argv[2];
+	} else {
+		printf("Usage: %s [server-ip] \"message to send\"\n", argv[0]);
 		exit(-1);
 	}
 
 	/* preparo la variabile msg in base alla dimensione del messaggio inserito dall'utente */
-	msg = malloc(strlen(argv[1])*sizeof(char));
+	msg = malloc(strlen(message) + 1);
+	if (msg == NULL) {
+		perror("Error allocating message");
+		exit(-1);
+	}
 
 	/* apertura socket del client */
 	if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -36,7 +51,12 @@ int main(int argc, char *argv[]) {
 	/* preparazione dell'indirizzo del server con cui connettere il socket */
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_port = htons(SERVERPORT);
-	serverAddress.sin_addr.s_addr = inet_addr(SERVERADDRESS);
+	if (inet_pton(AF_INET, serverIP, &serverAddress.sin_addr) != 1) {
+		fprintf(stderr, "Invalid server IPv4 address: %s\n", serverIP);
+		close(clientSocket);
+		free(msg);
+		exit(-1);
+	}
 
 	/* connessione del socket al server */
 	if ((connect(clientSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress))) == -1) {
@@ -44,10 +64,10 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 
-	printf("Client connected to %s\n", SERVERADDRESS);
+	printf("Client connected to %s:%d\n", serverIP, SERVERPORT);
 
 	/* invio messaggio al server */
-	strcpy(msg, argv[1]); 
+	strcpy(msg, message);
 	msglen = strlen(msg)+1;
 	returnCode = write(clientSocket, msg, msglen);
 
@@ -58,4 +78,3 @@ int main(int argc, char *argv[]) {
 	close(clientSocket);
 	return(0);
 }
-

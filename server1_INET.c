@@ -8,7 +8,9 @@
 #include <unistd.h>
 #include "ft_split.c"
 
+#ifndef SERVERPORT
 #define SERVERPORT 12123
+#endif
 #define SERVERADDRESS INADDR_ANY
 
 #define MAX 32
@@ -85,4 +87,3 @@ int main(int argc, char * argv[], char **envp) {
 	}
 	return(0);
 }
-
